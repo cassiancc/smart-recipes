@@ -11,11 +11,13 @@ import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.minecraft.recipe.RecipeEntry;
 import net.minecraft.recipe.RecipeManager;
 import net.minecraft.recipe.RecipeType;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.resource.ResourceManager;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
 import net.minecraft.util.profiler.Profiler;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -43,6 +45,7 @@ class RecipeManagerMixin implements ReloadableRecipeManager {
     @Shadow
     private Map<RecipeType<?>, Map<Identifier, RecipeEntry<?>>> recipes;
 
+    @Shadow @Final private RegistryWrapper.WrapperLookup registryLookup;
     @Unique
     private Map<Identifier, Collection<Map.Entry<Identifier, JsonElement>>> waitingForReload;
 
@@ -167,7 +170,7 @@ class RecipeManagerMixin implements ReloadableRecipeManager {
                 switch (recipeState) {
                     case KEEP -> {
                         Map<Identifier, RecipeEntry<?>> container = mutableRecipes.computeIfAbsent(recipeType, x -> new HashMap<>());
-                        container.put(recipeId, recipeInfo.getRecipeEntry().orElseThrow(() -> new IllegalArgumentException("Unable to parse recipe '" + recipeId + "'")));
+                        container.put(recipeId, recipeInfo.getRecipeEntry(registryLookup).orElseThrow(() -> new IllegalArgumentException("Unable to parse recipe '" + recipeId + "'")));
                     }
                     case REMOVE -> {
                         Map<Identifier, RecipeEntry<?>> container = mutableRecipes.get(recipeType);

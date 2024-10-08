@@ -7,6 +7,7 @@ import net.minecraft.recipe.RecipeEntry;
 import net.minecraft.recipe.RecipeManager;
 import net.minecraft.recipe.RecipeType;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Contract;
 
@@ -46,10 +47,10 @@ public class RecipeInfo {
         return Optional.ofNullable(this.recipeType);
     }
 
-    public Optional<RecipeEntry<?>> getRecipeEntry() {
+    public Optional<RecipeEntry<?>> getRecipeEntry(RegistryWrapper.WrapperLookup lookup) {
         if (this.recipeEntry == null && this.recipeId != null && this.recipeObject != null) {
             try {
-                this.recipeEntry = RecipeManager.deserialize(this.recipeId, this.recipeObject);
+                this.recipeEntry = RecipeManager.deserialize(this.recipeId, this.recipeObject, lookup);
             } catch (Throwable e) {
                 this.recipeEntry = null;
             }
@@ -57,8 +58,8 @@ public class RecipeInfo {
         return Optional.ofNullable(this.recipeEntry);
     }
 
-    public Optional<Recipe<?>> getRecipe() {
-        return this.getRecipeEntry().map(RecipeEntry::value);
+    public Optional<Recipe<?>> getRecipe(RegistryWrapper.WrapperLookup lookup) {
+        return this.getRecipeEntry(lookup).map(RecipeEntry::value);
     }
 
     @Contract(value = "_, _ -> new", pure = true)

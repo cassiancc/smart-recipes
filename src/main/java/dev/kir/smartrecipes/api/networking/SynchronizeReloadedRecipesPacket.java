@@ -15,6 +15,7 @@ import net.minecraft.network.PacketByteBuf;
 import net.minecraft.recipe.*;
 import net.minecraft.recipe.book.RecipeBook;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
@@ -57,11 +58,11 @@ public class SynchronizeReloadedRecipesPacket {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends RecipeEntry<U>, U extends Recipe<?>> void writeRecipeEntry(PacketByteBuf buf, Pair<ReloadableRecipeManager.RecipeState, RecipeInfo> recipeEntry) {
+    private static <T extends RecipeEntry<U>, U extends Recipe<?>> void writeRecipeEntry(PacketByteBuf buf, Pair<ReloadableRecipeManager.RecipeState, RecipeInfo> recipeEntry, RegistryWrapper.WrapperLookup lookup) {
         ReloadableRecipeManager.RecipeState state = recipeEntry.getLeft();
         RecipeInfo recipeInfo = recipeEntry.getRight();
         if (state == ReloadableRecipeManager.RecipeState.KEEP) {
-            T recipe = (T)recipeInfo.getRecipeEntry().orElseThrow(() -> new IllegalArgumentException("Unable to parse recipe '" + recipeInfo.getRecipeId() + "'"));
+            T recipe = (T)recipeInfo.getRecipeEntry(lookup).orElseThrow(() -> new IllegalArgumentException("Unable to parse recipe '" + recipeInfo.getRecipeId() + "'"));
 
             buf.writeBoolean(true);
             buf.writeIdentifier(Registries.RECIPE_SERIALIZER.getId(recipe.value().getSerializer()));
@@ -106,18 +107,18 @@ public class SynchronizeReloadedRecipesPacket {
         }
 
         @Override
-        public Optional<RecipeEntry<?>> getRecipeEntry() {
-            return this.getRecipe().map(recipe -> new RecipeEntry<>(this.getRecipeId(), recipe));
+        public Optional<RecipeEntry<?>> getRecipeEntry(RegistryWrapper.WrapperLookup lookup) {
+            return this.getRecipe(lookup).map(recipe -> new RecipeEntry<>(this.getRecipeId(), recipe));
         }
 
         @Override
-        public Optional<Recipe<?>> getRecipe() {
+        public Optional<Recipe<?>> getRecipe(RegistryWrapper.WrapperLookup lookup) {
             return Optional.ofNullable(this.recipe);
         }
 
         @Override
-        public Optional<RecipeType<?>> getRecipeType() {
-            return this.recipeType == null ? this.getRecipe().map(Recipe::getType) : Optional.of(this.recipeType);
+        public Optional<RecipeType<?>> getRecipeType(RegistryWrapper.WrapperLookup lookup) {
+            return this.recipeType == null ? this.getRecipe(lookup).map(Recipe::getType) : Optional.of(this.recipeType);
         }
 
         @Override

@@ -15,6 +15,7 @@ import net.minecraft.client.toast.RecipeToast;
 import net.minecraft.recipe.RecipeEntry;
 import net.minecraft.recipe.book.RecipeBook;
 import net.minecraft.registry.DynamicRegistryManager;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerRecipeBook;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
@@ -23,10 +24,10 @@ import java.util.Collection;
 
 public final class RecipeBookUtil {
     public static void apply(RecipeBook recipeBook, DynamicRegistryManager registryManager, Collection<Pair<ReloadableRecipeManager.RecipeState, RecipeInfo>> diff) {
-        apply(recipeBook, registryManager, diff, false);
+        apply(recipeBook, registryManager, diff, false, registryManager);
     }
 
-    public static void apply(RecipeBook recipeBook, DynamicRegistryManager registryManager, Collection<Pair<ReloadableRecipeManager.RecipeState, RecipeInfo>> diff, boolean showRecipeToasts) {
+    public static void apply(RecipeBook recipeBook, DynamicRegistryManager registryManager, Collection<Pair<ReloadableRecipeManager.RecipeState, RecipeInfo>> diff, boolean showRecipeToasts, RegistryWrapper.WrapperLookup lookup) {
         if (diff.isEmpty()) {
             return;
         }
@@ -37,8 +38,8 @@ public final class RecipeBookUtil {
             ReloadableRecipeManager.RecipeState recipeState = entry.getLeft();
             RecipeInfo recipeInfo = entry.getRight();
             Identifier recipeId = recipeInfo.getRecipeId();
-            if (recipeState == ReloadableRecipeManager.RecipeState.KEEP && recipeInfo.getRecipeEntry().isPresent()) {
-                RecipeEntry<?> recipe = recipeInfo.getRecipeEntry().get();
+            if (recipeState == ReloadableRecipeManager.RecipeState.KEEP && recipeInfo.getRecipeEntry(lookup).isPresent()) {
+                RecipeEntry<?> recipe = recipeInfo.getRecipeEntry(lookup).get();
                 if (showRecipeToasts && isClient && !(recipeBook instanceof ServerRecipeBook) && !recipeBook.contains(recipeId)) {
                     recipeBook.display(recipe);
                     showRecipeToast(recipe);
@@ -67,7 +68,8 @@ public final class RecipeBookUtil {
             for (RecipeResultCollection collection : clientRecipeBook.getOrderedResults()) {
                 collection.initialize(clientRecipeBook);
             }
-            client.reloadSearchProvider(SearchManager.RECIPE_OUTPUT, clientRecipeBook.getOrderedResults());
+
+//            client.reloadSearchProvider(SearchManager.RECIPE_OUTPUT, clientRecipeBook.getOrderedResults());
         }
 
         if (MinecraftClient.getInstance().currentScreen instanceof RecipeBookProvider recipeBookProvider) {
