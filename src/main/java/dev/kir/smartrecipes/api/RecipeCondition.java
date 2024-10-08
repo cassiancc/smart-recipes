@@ -81,7 +81,7 @@ public interface RecipeCondition {
     }
 
     static boolean test(String id, @Nullable JsonElement args, RecipeInfo info) {
-        return test(new Identifier(id), args, info);
+        return test(Identifier.of(id), args, info);
     }
 
     static boolean test(Identifier id, @Nullable JsonElement args, RecipeInfo info) {
@@ -94,7 +94,7 @@ public interface RecipeCondition {
 
     @Nullable
     static RecipeCondition get(String id) {
-        return get(new Identifier(id));
+        return get(Identifier.of(id));
     }
 
     @Nullable
@@ -103,7 +103,7 @@ public interface RecipeCondition {
     }
 
     static <T extends RecipeCondition> T register(String id, T condition) {
-        return register(new Identifier(id), condition);
+        return register(Identifier.of(id), condition);
     }
 
     static <T extends RecipeCondition> T register(Identifier id, T condition) {

@@ -152,15 +152,15 @@ final class RecipeConditions {
 
 
     public static final RecipeCondition ENTRIES_REGISTERED = (e, i) -> JsonUtil.flatMap(e, RegistryEntry::parse, RegistryEntry::parse).allMatch(x -> {
-        Registry<?> registry = Registries.REGISTRIES.get(new Identifier(x.registry()));
-        return registry != null && registry.containsId(new Identifier(x.entry()));
+        Registry<?> registry = Registries.REGISTRIES.get(Identifier.of(x.registry()));
+        return registry != null && registry.containsId(Identifier.of(x.entry()));
     });
 
-    public static final RecipeCondition BLOCKS_REGISTERED = (e, i) -> JsonUtil.flatMap(e).allMatch(x -> Registries.BLOCK.containsId(new Identifier(x.getAsString())));
+    public static final RecipeCondition BLOCKS_REGISTERED = (e, i) -> JsonUtil.flatMap(e).allMatch(x -> Registries.BLOCK.containsId(Identifier.of(x.getAsString())));
 
-    public static final RecipeCondition ITEMS_REGISTERED = (e, i) -> JsonUtil.flatMap(e).allMatch(x -> Registries.ITEM.containsId(new Identifier(x.getAsString())));
+    public static final RecipeCondition ITEMS_REGISTERED = (e, i) -> JsonUtil.flatMap(e).allMatch(x -> Registries.ITEM.containsId(Identifier.of(x.getAsString())));
 
-    public static final RecipeCondition BLOCK_ENTITIES_REGISTERED = (e, i) -> JsonUtil.flatMap(e).allMatch(x -> Registries.BLOCK_ENTITY_TYPE.containsId(new Identifier(x.getAsString())));
+    public static final RecipeCondition BLOCK_ENTITIES_REGISTERED = (e, i) -> JsonUtil.flatMap(e).allMatch(x -> Registries.BLOCK_ENTITY_TYPE.containsId(Identifier.of(x.getAsString())));
 
 
     public static final RecipeCondition MODS_LOADED = (e, i) -> JsonUtil.flatMap(e, ModEntry::parse, ModEntry::parse).allMatch(x -> {

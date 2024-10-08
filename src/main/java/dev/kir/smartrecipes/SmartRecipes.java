@@ -15,7 +15,7 @@ public class SmartRecipes implements ClientModInitializer {
     public static final SmartRecipesConfig CONFIG = SmartRecipesConfig.load();
 
     public static Identifier locate(String id) {
-        return new Identifier(MOD_ID, id);
+        return Identifier.of(MOD_ID, id);
     }
 
     @Override

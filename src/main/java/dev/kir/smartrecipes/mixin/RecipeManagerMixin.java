@@ -33,12 +33,12 @@ class RecipeManagerMixin implements ReloadableRecipeManager {
     @Unique
     private static final Identifier CONDITIONS = SmartRecipes.locate("conditions");
     @Unique
-    private static final Identifier OBSOLETE_CONDITIONS = new Identifier("conditions");
+    private static final Identifier OBSOLETE_CONDITIONS = Identifier.of("conditions");
 
     @Unique
     private static final Identifier RELOAD_CONDITIONS = SmartRecipes.locate("reload_conditions");
     @Unique
-    private static final Identifier OBSOLETE_RELOAD_CONDITIONS = new Identifier("reload_conditions");
+    private static final Identifier OBSOLETE_RELOAD_CONDITIONS = Identifier.of("reload_conditions");
 
     @Shadow
     private Map<RecipeType<?>, Map<Identifier, RecipeEntry<?>>> recipes;

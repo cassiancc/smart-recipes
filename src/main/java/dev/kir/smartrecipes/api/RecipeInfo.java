@@ -40,7 +40,7 @@ public class RecipeInfo {
             String type = this.recipeObject.get("type") instanceof JsonPrimitive typePrimitive && typePrimitive.isString() ? typePrimitive.getAsString() : null;
             Identifier id = type == null ? null : Identifier.tryParse(type);
             if (id != null) {
-                this.recipeType = Registries.RECIPE_TYPE.getOrEmpty(id).or(() -> Registries.RECIPE_TYPE.getOrEmpty(new Identifier(id.getNamespace(), id.getPath().split("_")[0]))).orElse(null);
+                this.recipeType = Registries.RECIPE_TYPE.getOrEmpty(id).or(() -> Registries.RECIPE_TYPE.getOrEmpty(Identifier.of(id.getNamespace(), id.getPath().split("_")[0]))).orElse(null);
             }
         }
         return Optional.ofNullable(this.recipeType);

@@ -26,7 +26,7 @@ public interface RecipeReloadCondition {
 
     @Nullable
     static RecipeReloadCondition get(String id) {
-        return get(new Identifier(id));
+        return get(Identifier.of(id));
     }
 
     @Nullable
@@ -35,7 +35,7 @@ public interface RecipeReloadCondition {
     }
 
     static <T extends RecipeReloadCondition> T register(String id, T condition) {
-        return register(new Identifier(id), condition);
+        return register(Identifier.of(id), condition);
     }
 
     static <T extends RecipeReloadCondition> T register(Identifier id, T condition) {
