@@ -1,7 +1,11 @@
 package dev.kir.smartrecipes.api;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.recipe.Recipe;
 import net.minecraft.recipe.RecipeEntry;
 import net.minecraft.recipe.RecipeManager;
@@ -9,11 +13,16 @@ import net.minecraft.recipe.RecipeType;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.dynamic.Codecs;
 import org.jetbrains.annotations.Contract;
 
 import java.util.Optional;
 
 public class RecipeInfo {
+    public static final Codec<RecipeInfo> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            Identifier.CODEC.fieldOf("recipeId").forGetter(RecipeInfo::getRecipeId),
+            Codecs.JSON_ELEMENT.xmap(JsonElement::getAsJsonObject, (object) -> object).fieldOf("recipeObject").forGetter(RecipeInfo::getRecipeAsJson)
+    ).apply(instance, RecipeInfo::new));
     private final Identifier recipeId;
     private final JsonObject recipeObject;
     private RecipeEntry<?> recipeEntry;

@@ -1,59 +1,59 @@
 package dev.kir.smartrecipes.api.networking;
 
 import com.google.gson.JsonObject;
+import com.mojang.serialization.Codec;
 import dev.kir.smartrecipes.SmartRecipes;
 import dev.kir.smartrecipes.api.RecipeInfo;
 import dev.kir.smartrecipes.api.ReloadableRecipeManager;
 import dev.kir.smartrecipes.util.recipe.RecipeBookUtil;
+import io.netty.buffer.ByteBuf;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayNetworkHandler;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtSizeTracker;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.network.codec.PacketCodec;
+import net.minecraft.network.codec.PacketCodecs;
 import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.recipe.*;
 import net.minecraft.recipe.book.RecipeBook;
-import net.minecraft.registry.Registries;
+import net.minecraft.registry.BuiltinRegistries;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
+import org.jetbrains.annotations.ApiStatus;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class SynchronizeReloadedRecipesPacket implements CustomPayload {
     private final Collection<Pair<ReloadableRecipeManager.RecipeState, RecipeInfo>> reloadedRecipes;
     public static final CustomPayload.Id<SynchronizeReloadedRecipesPacket> ID = new CustomPayload.Id<>(SmartRecipes.locate("packet.sync.recipes"));
-    public static final PacketCodec<PacketByteBuf, RecipeInfo> RECIPE_INFO_CODEC;
-    public static final PacketCodec<PacketByteBuf, ReloadableRecipeManager.RecipeState> RECIPE_STATE_CODEC;
-    public static final PacketCodec<PacketByteBuf, Pair<ReloadableRecipeManager.RecipeState, RecipeInfo>> PAIR_CODEC;
-    public static final PacketCodec<PacketByteBuf, Collection<Pair<ReloadableRecipeManager.RecipeState, RecipeInfo>>> COLLECTION_CODEC;
-    public static final PacketCodec<PacketByteBuf, SynchronizeReloadedRecipesPacket> CODEC = PacketCodec.tuple();
+    public static final PacketCodec<ByteBuf, SynchronizeReloadedRecipesPacket> CODEC = PacketCodecs.codec(Codec.pair(ReloadableRecipeManager.RecipeState.CODEC, RecipeInfo.CODEC)
+            .listOf()
+            .xmap(SynchronizeReloadedRecipesPacket::new, SynchronizeReloadedRecipesPacket::getReloadedRecipesPairs));
+
+    private List<com.mojang.datafixers.util.Pair<ReloadableRecipeManager.RecipeState, RecipeInfo>> getReloadedRecipesPairs() {
+        return reloadedRecipes.stream().map(pair -> new com.mojang.datafixers.util.Pair<>(pair.getLeft(), pair.getRight())).collect(Collectors.toCollection(ArrayList::new));
+    }
+
     private RegistryWrapper.WrapperLookup registryLookup = null;
 
-
-    public SynchronizeReloadedRecipesPacket(PacketByteBuf buf) {
-        this.reloadedRecipes = buf.readList(SynchronizeReloadedRecipesPacket::readRecipeEntry);
-    }
 
     public SynchronizeReloadedRecipesPacket(Collection<Pair<ReloadableRecipeManager.RecipeState, RecipeInfo>> reloadedRecipes, RegistryWrapper.WrapperLookup registryLookup) {
         this.reloadedRecipes = reloadedRecipes;
         this.registryLookup = registryLookup;
     }
 
+    @ApiStatus.Internal // For the codec only
+    public SynchronizeReloadedRecipesPacket(List<com.mojang.datafixers.util.Pair<ReloadableRecipeManager.RecipeState, RecipeInfo>> reloadedRecipes) {
+        this(reloadedRecipes.stream().map(pair -> new Pair<>(pair.getFirst(), pair.getSecond())).collect(Collectors.toCollection(ArrayList::new)), BuiltinRegistries.createWrapperLookup());
+    }
+
     @Override
     public Id<SynchronizeReloadedRecipesPacket> getId() {
         return ID;
-    }
-
-    public void write(PacketByteBuf buf) {
-        buf.writeCollection(this.reloadedRecipes, (buf1, recipeEntry) -> writeRecipeEntry(buf1, recipeEntry, registryLookup));
-
     }
 
     @Environment(EnvType.CLIENT)
@@ -64,39 +64,6 @@ public class SynchronizeReloadedRecipesPacket implements CustomPayload {
         RecipeBook recipeBook = client.player == null ? null : client.player.getRecipeBook();
         if (recipeBook != null) {
             RecipeBookUtil.apply(recipeBook, handler.getRegistryManager(), this.reloadedRecipes);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T extends RecipeEntry<U>, U extends Recipe<?>> void writeRecipeEntry(RegistryByteBuf buf, Pair<ReloadableRecipeManager.RecipeState, RecipeInfo> recipeEntry, RegistryWrapper.WrapperLookup lookup) {
-        ReloadableRecipeManager.RecipeState state = recipeEntry.getLeft();
-        RecipeInfo recipeInfo = recipeEntry.getRight();
-        if (state == ReloadableRecipeManager.RecipeState.KEEP) {
-            T recipe = (T)recipeInfo.getRecipeEntry(lookup).orElseThrow(() -> new IllegalArgumentException("Unable to parse recipe '" + recipeInfo.getRecipeId() + "'"));
-
-            buf.writeBoolean(true);
-            buf.writeIdentifier(Registries.RECIPE_SERIALIZER.getId(recipe.value().getSerializer()));
-            buf.writeIdentifier(recipe.id());
-            ((RecipeSerializer<U>)recipe.value().getSerializer()).packetCodec().encode(buf, recipe.value());
-        } else {
-            buf.writeBoolean(false);
-            buf.writeIdentifier(recipeInfo.getRecipeId());
-            buf.writeIdentifier(Registries.RECIPE_TYPE.getId(recipeInfo.getRecipeType(lookup).orElseThrow(() -> new IllegalArgumentException("Recipe '" + recipeInfo.getRecipeId() + "' uses invalid or unsupported recipe type"))));
-        }
-    }
-
-    private static Pair<ReloadableRecipeManager.RecipeState, RecipeInfo> readRecipeEntry(PacketByteBuf buf) {
-        if (buf.readBoolean()) {
-            Identifier serializerId = buf.readIdentifier();
-            RecipeSerializer<?> serializer = Registries.RECIPE_SERIALIZER.getOrEmpty(serializerId).orElseThrow(() -> new IllegalArgumentException("Unknown recipe serializer " + serializerId));
-            Identifier recipeId = buf.readIdentifier();
-            Recipe<?> recipe = serializer.read(buf);
-            return new Pair<>(ReloadableRecipeManager.RecipeState.KEEP, new SerializableRecipeInfo(recipeId, recipe));
-        } else {
-            Identifier recipeId = buf.readIdentifier();
-            Identifier recipeTypeId = buf.readIdentifier();
-            RecipeType<?> recipeType = Registries.RECIPE_TYPE.getOrEmpty(recipeTypeId).orElseThrow(() -> new IllegalArgumentException("Invalid or unsupported recipe type '" + recipeTypeId + "'"));
-            return new Pair<>(ReloadableRecipeManager.RecipeState.REMOVE, new SerializableRecipeInfo(recipeId, recipeType));
         }
     }
 
