@@ -7,54 +7,60 @@ import dev.kir.smartrecipes.api.ReloadableRecipeManager;
 import dev.kir.smartrecipes.util.recipe.RecipeBookUtil;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtSizeTracker;
 import net.minecraft.network.PacketByteBuf;
+import net.minecraft.network.RegistryByteBuf;
+import net.minecraft.network.codec.PacketCodec;
+import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.recipe.*;
 import net.minecraft.recipe.book.RecipeBook;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryWrapper;
-import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Pair;
 
 import java.util.Collection;
 import java.util.Optional;
-import java.util.stream.Stream;
 
-public class SynchronizeReloadedRecipesPacket {
-    public static final Identifier ID = SmartRecipes.locate("packet.sync.recipes");
-
+public class SynchronizeReloadedRecipesPacket implements CustomPayload {
     private final Collection<Pair<ReloadableRecipeManager.RecipeState, RecipeInfo>> reloadedRecipes;
+    public static final CustomPayload.Id<SynchronizeReloadedRecipesPacket> ID = new CustomPayload.Id<>(SmartRecipes.locate("packet.sync.recipes"));
+    public static final PacketCodec<PacketByteBuf, SynchronizeReloadedRecipesPacket> CODEC = PacketCodec.of(SynchronizeReloadedRecipesPacket::write, SynchronizeReloadedRecipesPacket::new);
+    private RegistryWrapper.WrapperLookup registryLookup = null;
 
-    public SynchronizeReloadedRecipesPacket(Collection<Pair<ReloadableRecipeManager.RecipeState, RecipeInfo>> reloadedRecipes) {
-        this.reloadedRecipes = reloadedRecipes;
-    }
 
     public SynchronizeReloadedRecipesPacket(PacketByteBuf buf) {
         this.reloadedRecipes = buf.readList(SynchronizeReloadedRecipesPacket::readRecipeEntry);
     }
 
+    public SynchronizeReloadedRecipesPacket(Collection<Pair<ReloadableRecipeManager.RecipeState, RecipeInfo>> reloadedRecipes, RegistryWrapper.WrapperLookup registryLookup) {
+        this.reloadedRecipes = reloadedRecipes;
+        this.registryLookup = registryLookup;
+    }
+
+    @Override
+    public Id<SynchronizeReloadedRecipesPacket> getId() {
+        return ID;
+    }
+
     public void write(PacketByteBuf buf) {
-        buf.writeCollection(this.reloadedRecipes, SynchronizeReloadedRecipesPacket::writeRecipeEntry);
+        buf.writeCollection(this.reloadedRecipes, (buf1, recipeEntry) -> writeRecipeEntry(buf1, recipeEntry, registryLookup));
+
     }
 
     @Environment(EnvType.CLIENT)
-    public void apply(MinecraftClient client, ClientPlayNetworkHandler handler) {
+    public void execute(MinecraftClient client) {
+        var handler = client.getNetworkHandler();
         RecipeManager recipeManager = handler.getRecipeManager();
         ((ReloadableRecipeManager)recipeManager).apply(this.reloadedRecipes);
         RecipeBook recipeBook = client.player == null ? null : client.player.getRecipeBook();
         if (recipeBook != null) {
             RecipeBookUtil.apply(recipeBook, handler.getRegistryManager(), this.reloadedRecipes);
         }
-    }
-
-    public void send(Stream<ServerPlayerEntity> players) {
-        PacketByteBuf buffer = PacketByteBufs.create();
-        this.write(buffer);
-        players.forEach(player -> ServerPlayNetworking.send(player, ID, buffer));
     }
 
     @SuppressWarnings("unchecked")
@@ -89,6 +95,7 @@ public class SynchronizeReloadedRecipesPacket {
             return new Pair<>(ReloadableRecipeManager.RecipeState.REMOVE, new SerializableRecipeInfo(recipeId, recipeType));
         }
     }
+
 
     private static class SerializableRecipeInfo extends RecipeInfo {
         private final Recipe<?> recipe;

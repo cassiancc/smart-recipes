@@ -7,6 +7,7 @@ import dev.kir.smartrecipes.api.*;
 import dev.kir.smartrecipes.api.networking.SynchronizeReloadedRecipesPacket;
 import dev.kir.smartrecipes.util.JsonUtil;
 import dev.kir.smartrecipes.util.recipe.RecipeBookUtil;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.minecraft.recipe.RecipeEntry;
 import net.minecraft.recipe.RecipeManager;
@@ -30,6 +31,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static dev.kir.smartrecipes.api.networking.SynchronizeReloadedRecipesPacket.ID;
+
 @Mixin(RecipeManager.class)
 class RecipeManagerMixin implements ReloadableRecipeManager {
     @Unique
@@ -42,7 +45,7 @@ class RecipeManagerMixin implements ReloadableRecipeManager {
     @Unique
     private static final Identifier OBSOLETE_RELOAD_CONDITIONS = Identifier.of("reload_conditions");
 
-    @Shadow
+    @Unique
     private Map<RecipeType<?>, Map<Identifier, RecipeEntry<?>>> recipes;
 
     @Shadow @Final private RegistryWrapper.WrapperLookup registryLookup;
@@ -192,7 +195,7 @@ class RecipeManagerMixin implements ReloadableRecipeManager {
             return;
         }
 
-        new SynchronizeReloadedRecipesPacket(diff).send(PlayerLookup.all(server).stream());
+        ClientPlayNetworking.send(new SynchronizeReloadedRecipesPacket(diff, registryLookup));
         PlayerLookup.all(server).forEach(x -> RecipeBookUtil.apply(x.getRecipeBook(), server.getRegistryManager(), diff));
     }
 
