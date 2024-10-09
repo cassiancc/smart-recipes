@@ -32,7 +32,7 @@ public class RecipeInfo {
         return this.recipeObject;
     }
 
-    public Optional<RecipeType<?>> getRecipeType() {
+    public Optional<RecipeType<?>> getRecipeType(RegistryWrapper.WrapperLookup lookup) {
         if (this.recipeEntry != null) {
             return Optional.of(this.recipeEntry.value().getType());
         }

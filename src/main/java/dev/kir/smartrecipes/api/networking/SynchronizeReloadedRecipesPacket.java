@@ -71,7 +71,7 @@ public class SynchronizeReloadedRecipesPacket {
         } else {
             buf.writeBoolean(false);
             buf.writeIdentifier(recipeInfo.getRecipeId());
-            buf.writeIdentifier(Registries.RECIPE_TYPE.getId(recipeInfo.getRecipeType().orElseThrow(() -> new IllegalArgumentException("Recipe '" + recipeInfo.getRecipeId() + "' uses invalid or unsupported recipe type"))));
+            buf.writeIdentifier(Registries.RECIPE_TYPE.getId(recipeInfo.getRecipeType(lookup).orElseThrow(() -> new IllegalArgumentException("Recipe '" + recipeInfo.getRecipeId() + "' uses invalid or unsupported recipe type"))));
         }
     }
 

@@ -132,7 +132,7 @@ class RecipeManagerMixin implements ReloadableRecipeManager {
                 }
 
                 boolean shouldExist = RecipeCondition.ALL.test(conditions, recipeInfo);
-                boolean exists = this.recipes.get(recipeInfo.getRecipeType().orElseThrow()).containsKey(recipeId);
+                boolean exists = this.recipes.get(recipeInfo.getRecipeType(registryLookup).orElseThrow()).containsKey(recipeId);
                 if (shouldExist != exists) {
                     diff.add(new Pair<>(shouldExist ? RecipeState.KEEP : RecipeState.REMOVE, recipeInfo));
                     ++reloaded;
@@ -166,7 +166,7 @@ class RecipeManagerMixin implements ReloadableRecipeManager {
             RecipeInfo recipeInfo = entry.getRight();
             Identifier recipeId = recipeInfo.getRecipeId();
             try {
-                RecipeType<?> recipeType = recipeInfo.getRecipeType().orElseThrow(() -> new IllegalArgumentException("Recipe '" + recipeId + "' uses invalid or unsupported recipe type"));
+                RecipeType<?> recipeType = recipeInfo.getRecipeType(registryLookup).orElseThrow(() -> new IllegalArgumentException("Recipe '" + recipeId + "' uses invalid or unsupported recipe type"));
                 switch (recipeState) {
                     case KEEP -> {
                         Map<Identifier, RecipeEntry<?>> container = mutableRecipes.computeIfAbsent(recipeType, x -> new HashMap<>());
