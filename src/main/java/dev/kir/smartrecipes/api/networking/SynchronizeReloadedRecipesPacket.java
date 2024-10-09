@@ -29,7 +29,11 @@ import java.util.Optional;
 public class SynchronizeReloadedRecipesPacket implements CustomPayload {
     private final Collection<Pair<ReloadableRecipeManager.RecipeState, RecipeInfo>> reloadedRecipes;
     public static final CustomPayload.Id<SynchronizeReloadedRecipesPacket> ID = new CustomPayload.Id<>(SmartRecipes.locate("packet.sync.recipes"));
-    public static final PacketCodec<PacketByteBuf, SynchronizeReloadedRecipesPacket> CODEC = PacketCodec.of(SynchronizeReloadedRecipesPacket::write, SynchronizeReloadedRecipesPacket::new);
+    public static final PacketCodec<PacketByteBuf, RecipeInfo> RECIPE_INFO_CODEC;
+    public static final PacketCodec<PacketByteBuf, ReloadableRecipeManager.RecipeState> RECIPE_STATE_CODEC;
+    public static final PacketCodec<PacketByteBuf, Pair<ReloadableRecipeManager.RecipeState, RecipeInfo>> PAIR_CODEC;
+    public static final PacketCodec<PacketByteBuf, Collection<Pair<ReloadableRecipeManager.RecipeState, RecipeInfo>>> COLLECTION_CODEC;
+    public static final PacketCodec<PacketByteBuf, SynchronizeReloadedRecipesPacket> CODEC = PacketCodec.tuple();
     private RegistryWrapper.WrapperLookup registryLookup = null;
 
 
@@ -64,7 +68,7 @@ public class SynchronizeReloadedRecipesPacket implements CustomPayload {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends RecipeEntry<U>, U extends Recipe<?>> void writeRecipeEntry(PacketByteBuf buf, Pair<ReloadableRecipeManager.RecipeState, RecipeInfo> recipeEntry, RegistryWrapper.WrapperLookup lookup) {
+    private static <T extends RecipeEntry<U>, U extends Recipe<?>> void writeRecipeEntry(RegistryByteBuf buf, Pair<ReloadableRecipeManager.RecipeState, RecipeInfo> recipeEntry, RegistryWrapper.WrapperLookup lookup) {
         ReloadableRecipeManager.RecipeState state = recipeEntry.getLeft();
         RecipeInfo recipeInfo = recipeEntry.getRight();
         if (state == ReloadableRecipeManager.RecipeState.KEEP) {
@@ -73,7 +77,7 @@ public class SynchronizeReloadedRecipesPacket implements CustomPayload {
             buf.writeBoolean(true);
             buf.writeIdentifier(Registries.RECIPE_SERIALIZER.getId(recipe.value().getSerializer()));
             buf.writeIdentifier(recipe.id());
-            ((RecipeSerializer<U>)recipe.value().getSerializer()).write(buf, recipe.value());
+            ((RecipeSerializer<U>)recipe.value().getSerializer()).packetCodec().encode(buf, recipe.value());
         } else {
             buf.writeBoolean(false);
             buf.writeIdentifier(recipeInfo.getRecipeId());
